@@ -1,0 +1,86 @@
+<beans xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:task="http://www.springframework.org/schema/task"
+       xmlns="http://www.springframework.org/schema/beans"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+      http://www.springframework.org/schema/beans/spring-beans-4.2.xsd
+      http://www.springframework.org/schema/context
+      http://www.springframework.org/schema/context/spring-context.xsd
+      http://www.springframework.org/schema/mvc
+      http://www.springframework.org/schema/mvc/spring-mvc-4.2.xsd
+      http://www.springframework.org/schema/aop
+      http://www.springframework.org/schema/aop/spring-aop-4.2.xsd
+      http://www.springframework.org/schema/task
+      http://www.springframework.org/schema/task/spring-task.xsd">
+    <aop:aspectj-autoproxy proxy-target-class="true"/>
+
+    <context:annotation-config/>
+    <context:component-scan base-package="com.gs.spider.**"/>
+
+    <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+        <property name="dataSource" ref="dataSource" />
+    </bean>
+
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="basePackage" value="com.gs.spider.dao" />
+    </bean>
+
+    <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource"
+          destroy-method="close">
+        <property name="driverClassName" value="com.mysql.jdbc.Driver" />
+        <property name="url" value="jdbc:mysql://localhost:3306/jobHunter2?characterEncoding=UTF-8" />
+        <property name="username" value="root" />
+        <property name="password" value="root" />
+    </bean>
+
+
+    <mvc:annotation-driven>
+        <mvc:message-converters>
+            <bean class="org.springframework.http.converter.json.GsonHttpMessageConverter"/>
+        </mvc:message-converters>
+    </mvc:annotation-driven>
+    <mvc:resources location="/js/" mapping="/js/**" cache-period="2592000"/>
+    <mvc:resources location="/css/" mapping="/css/**" cache-period="2592000"/>
+
+    <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+        <property name="prefix" value="/pages/"/>
+        <property name="suffix" value=".jsp"/>
+    </bean>
+    <bean class="com.gs.spider.gather.commons.CommonSpider" id="commonSpider">
+        <constructor-arg name="staticValue" ref="staticValue"/>
+        <constructor-arg name="taskManager" ref="taskManager"/>
+        <property name="commonWebpageDAO" ref="commonWebpageDAO"/>
+        <property name="spiderInfoDAO" ref="spiderInfoDAO"/>
+        <property name="commonWebpagePipeline" ref="commonWebpagePipeline"/>
+        <property name="contentLengthLimitHttpClientDownloader" ref="contentLengthLimitHttpClientDownloader"/>
+        <property name="keywordsExtractor" ref="HANLPExtractor"/>
+        <property name="summaryExtractor" ref="HANLPExtractor"/>
+        <property name="namedEntitiesExtractor" ref="HANLPExtractor"/>
+        <property name="casperjsDownloader" ref="casperjsDownloader"/>
+        <!--普通网页爬虫数据输出管道配置-->
+        <property name="pipelineList">
+            <list>
+                <!--Redis输出-->
+                <ref bean="commonWebpageRedisPipeline"/>
+                <!--ES输出 -->
+                <ref bean="commonWebpagePipeline"/>
+                <!--Json输出-->
+                <!--<ref bean="jsonFilePipeline"/>-->
+            </list>
+        </property>
+    </bean>
+    <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="locations">
+            <array>
+            </array>
+        </property>
+        <property name="fileEncoding" value="utf-8"/>
+    </bean>
+    <bean id="schedulerFactoryBean" class="org.springframework.scheduling.quartz.SchedulerFactoryBean"/>
+    <task:executor id="executor" pool-size="5"/>
+    <task:scheduler id="scheduler" pool-size="10"/>
+    <task:annotation-driven executor="executor" scheduler="scheduler"/>
+
+</beans>
